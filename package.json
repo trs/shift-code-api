@@ -1,6 +1,6 @@
 {
   "name": "shift-code-api",
-  "version": "0.0.1",
+  "version": "0.0.2",
   "description": "Borderlands SHiFT code redemption library",
   "main": "dist/index",
   "bin": "dist/bin",
@@ -10,7 +10,8 @@
   "scripts": {
     "test:once": "jest",
     "test": "npm run test:once -- --watchAll",
-    "build": "tsc"
+    "build": "tsc",
+    "prepare": "npm run build"
   },
   "keywords": [],
   "repository": {
