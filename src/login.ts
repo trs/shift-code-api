@@ -8,6 +8,10 @@ import { Session, Credentials } from './types';
 export async function getSession(): Promise<Session> {
   const url = new URL('/home', SHIFT_URL);
   const response = await fetch(url.href);
+  if (!response.ok) {
+    throw new Error(response.statusText);
+  }
+
   const text = await response.text();
   const $ = cheerio.load(text);
 
@@ -37,6 +41,9 @@ export async function authenticate(session: Session, creds: Credentials): Promis
     method: 'POST',
     body: params
   });
+  if (response.status !== 302) {
+    throw new Error(response.statusText);
+  }
 
   const cookie = response.headers.get('set-cookie');
   if (!cookie) {

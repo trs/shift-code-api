@@ -16,6 +16,7 @@ import {login, redeem} from './index';
   process.exit(0);
 })()
   .catch((err) => {
+    console.log(err);
     console.error(err.message);
     process.exit(1);
   });

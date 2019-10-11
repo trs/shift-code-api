@@ -17,6 +17,10 @@ export async function getRedemptionOptions(session: Session, code: string) {
       'cookie': session.cookie
     }
   });
+  if (!response.ok) {
+    throw new Error(response.statusText);
+  }
+
   const text = await response.text();
   const $ = cheerio.load(text);
 
@@ -67,6 +71,9 @@ export async function submitRedemption(session: Session, option: RedemptionOptio
       'cookie': session.cookie
     }
   });
+  if (response.status !== 302) {
+    throw new Error(response.statusText);
+  }
 
   const statusUrl = response.headers.get('location') as string;
   return statusUrl;
@@ -83,6 +90,10 @@ export async function waitForRedemption(session: Session, url: string, eocCntCoo
   if (response.status === 302) {
     const checkUrl = response.headers.get('location') as string;
     return checkUrl;
+  }
+
+  if (!response.ok) {
+    throw new Error(response.statusText);
   }
 
   const text = await response.text();
@@ -105,6 +116,10 @@ export async function checkRedemptionStatus(session: Session, url: string) {
       'cookie': session.cookie
     }
   });
+  if (!response.ok) {
+    throw new Error(response.statusText);
+  }
+
   const text = await response.text();
   const $ = cheerio.load(text);
 
