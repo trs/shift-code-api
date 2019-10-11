@@ -2,8 +2,8 @@ import { URL, URLSearchParams } from "url";
 import fetch from 'node-fetch';
 import * as cheerio from 'cheerio';
 
-import { SHIFT_URL } from "./const";
-import { Session, RedemptionOption } from "./types";
+import { SHIFT_URL, GAME_CODE, SHIFT_TITLE } from "./const";
+import { Session, RedemptionOption, RedemptionResult } from "./types";
 
 export async function getRedemptionOptions(session: Session, code: string) {
   const url = new URL('/entitlement_offer_codes', SHIFT_URL);
@@ -25,9 +25,6 @@ export async function getRedemptionOptions(session: Session, code: string) {
     const error = text.trim();
     throw new Error(error);
   }
-
-  const game = $('h2').text();
-  console.log(game);
 
   const options: RedemptionOption[] = [];
 
@@ -92,7 +89,6 @@ export async function waitForRedemption(session: Session, url: string, eocCntCoo
   const $ = cheerio.load(text);
 
   const status = $('#check_redemption_status');
-  // const statusText = status.text().trim();
   const statusPath = status.attr('data-url');
   const statusUrl = new URL(statusPath, SHIFT_URL).href;
 
@@ -119,8 +115,19 @@ export async function checkRedemptionStatus(session: Session, url: string) {
 
 export async function redeem(session: Session, code: string) {
   const options = await getRedemptionOptions(session, code);
-  const statusUrl = await submitRedemption(session, options[0]);
-  const checkUrl = await waitForRedemption(session, statusUrl);
-  const status = await checkRedemptionStatus(session, checkUrl);
-  console.log(status);
+
+  const results: RedemptionResult[] = [];
+  for (const option of options) {
+    const statusUrl = await submitRedemption(session, option);
+    const checkUrl = await waitForRedemption(session, statusUrl);
+    const status = await checkRedemptionStatus(session, checkUrl);
+
+    const result: RedemptionResult = {
+      title: GAME_CODE[SHIFT_TITLE.indexOf(option.title)],
+      service: option.service,
+      status
+    };
+    results.push(result);
+  }
+  return results;
 }

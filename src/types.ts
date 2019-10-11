@@ -16,3 +16,9 @@ export interface RedemptionOption {
   service: string;
   title: string;
 }
+
+export interface RedemptionResult {
+  title: string;
+  service: string;
+  status: string;
+}
