@@ -10,8 +10,6 @@ npm install shift-code-api
 
 ## Usage
 
-> WORK IN PROGRESS
-
 ```js
 import {login, redeem} from 'shift-code-api';
 
@@ -23,4 +21,10 @@ import {login, redeem} from 'shift-code-api';
 
   const redeem = await redeem(session, 'XXXXX-XXXXX-XXXXX-XXXXX-XXXXX');
 })();
+```
+
+## CLI
+
+```sh
+npx shift-code-api [email] [password] [code]
 ```

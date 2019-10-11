@@ -1,9 +1,9 @@
 {
   "name": "shift-code-api",
-  "version": "0.0.2",
+  "version": "0.0.4",
   "description": "Borderlands SHiFT code redemption library",
   "main": "dist/index",
-  "bin": "dist/bin",
+  "bin": {"shift-code-api": "dist/bin.js"},
   "files": [
     "dist/"
   ],
