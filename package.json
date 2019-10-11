@@ -3,6 +3,7 @@
   "version": "0.0.1",
   "description": "Borderlands SHiFT code redemption library",
   "main": "dist/index",
+  "bin": "dist/bin",
   "files": [
     "dist/"
   ],
