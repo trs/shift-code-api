@@ -38,7 +38,10 @@ export async function authenticate(session: Session, creds: Credentials): Promis
     body: params
   });
 
-  const cookie = response.headers.get('set-cookie') as string;
+  const cookie = response.headers.get('set-cookie');
+  if (!cookie) {
+    throw new Error('Authentication failed');
+  }
 
   return {
     token: session.token,
