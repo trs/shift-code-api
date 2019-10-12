@@ -2,10 +2,10 @@ import { URL, URLSearchParams } from "url";
 import fetch from 'node-fetch';
 import * as cheerio from 'cheerio';
 
-import { SHIFT_URL, GAME_CODE, SHIFT_TITLE } from "./const";
+import { SHIFT_URL, GAME_CODE, SHIFT_TITLE, SERVICE_CODE, SHIFT_SERVICE } from "./const";
 import { Session, RedemptionOption, RedemptionResult } from "./types";
 
-export async function getRedemptionOptions(session: Session, code: string) {
+export async function getRedemptionOptions(session: Session, code: string): Promise<[boolean, string | RedemptionOption[]]> {
   const url = new URL('/entitlement_offer_codes', SHIFT_URL);
   url.searchParams.set('code', code);
 
@@ -18,7 +18,7 @@ export async function getRedemptionOptions(session: Session, code: string) {
     }
   });
   if (!response.ok) {
-    throw new Error(response.statusText);
+    return [false, response.statusText];
   }
 
   const text = await response.text();
@@ -27,7 +27,7 @@ export async function getRedemptionOptions(session: Session, code: string) {
   const redeemOptions = $('.new_archway_code_redemption');
   if (redeemOptions.length === 0) {
     const error = text.trim();
-    throw new Error(error);
+    return [false, error];
   }
 
   const options: RedemptionOption[] = [];
@@ -48,7 +48,7 @@ export async function getRedemptionOptions(session: Session, code: string) {
     });
   });
 
-  return options;
+  return [true, options];
 }
 
 export async function submitRedemption(session: Session, option: RedemptionOption) {
@@ -128,20 +128,35 @@ export async function checkRedemptionStatus(session: Session, url: string) {
   return status;
 }
 
-export async function redeem(session: Session, code: string) {
-  const options = await getRedemptionOptions(session, code);
+export async function redeem(session: Session, option: RedemptionOption) {
+  const statusUrl = await submitRedemption(session, option);
+  const checkUrl = await waitForRedemption(session, statusUrl);
+  const status = await checkRedemptionStatus(session, checkUrl);
 
+  const result: RedemptionResult = {
+    code: option.code,
+    title: GAME_CODE[SHIFT_TITLE.indexOf(option.title)],
+    service: SERVICE_CODE[SHIFT_SERVICE.indexOf(option.service)],
+    status,
+    success: /Your code was successfully redeemed/i.test(status)
+  };
+  return result;
+}
+
+export async function redeemAll(session: Session, code: string) {
+  const [success, status] = await getRedemptionOptions(session, code);
+  if (!success) {
+    return {
+      code,
+      success: false,
+      status: status as string
+    };
+  }
+
+  const options = status as RedemptionOption[];
   const results: RedemptionResult[] = [];
   for (const option of options) {
-    const statusUrl = await submitRedemption(session, option);
-    const checkUrl = await waitForRedemption(session, statusUrl);
-    const status = await checkRedemptionStatus(session, checkUrl);
-
-    const result: RedemptionResult = {
-      title: GAME_CODE[SHIFT_TITLE.indexOf(option.title)],
-      service: option.service,
-      status
-    };
+    const result = await redeem(session, option);
     results.push(result);
   }
   return results;

@@ -20,3 +20,10 @@ export const GAME_CODE = [
   'tps',
   'bl3'
 ];
+
+export const SERVICE_CODE = [
+  'steam',
+  'xbox',
+  'psn',
+  'epic'
+];

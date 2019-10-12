@@ -1,3 +1,3 @@
 export {login} from './login';
-export {redeem} from './redeem';
+export {redeem, redeemAll, getRedemptionOptions} from './redeem';
 export * from './types';
