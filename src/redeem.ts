@@ -146,11 +146,11 @@ export async function redeem(session: Session, option: RedemptionOption) {
 export async function redeemAll(session: Session, code: string) {
   const [success, status] = await getRedemptionOptions(session, code);
   if (!success) {
-    return {
+    return [{
       code,
       success: false,
       status: status as string
-    };
+    }];
   }
 
   const options = status as RedemptionOption[];
