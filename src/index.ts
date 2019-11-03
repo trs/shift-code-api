@@ -1,3 +1,3 @@
-export {login} from './login';
-export {redeem, redeemAll, getRedemptionOptions} from './redeem';
+export { login } from './login';
+export { redeemService, redeemAll } from './redeem';
 export * from './types';

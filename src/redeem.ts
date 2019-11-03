@@ -1,15 +1,20 @@
 import { URL, URLSearchParams } from "url";
-import fetch from 'node-fetch';
 import * as cheerio from 'cheerio';
 
+import * as fetch from './fetch';
 import { SHIFT_URL, GAME_CODE, SHIFT_TITLE, SERVICE_CODE, SHIFT_SERVICE } from "./const";
 import { Session, RedemptionOption, RedemptionResult } from "./types";
 
+import createDebugger from 'debug';
+const debug = createDebugger('redeem');
+
 export async function getRedemptionOptions(session: Session, code: string): Promise<[boolean, string | RedemptionOption[]]> {
+  debug('Fetching redemption options');
+
   const url = new URL('/entitlement_offer_codes', SHIFT_URL);
   url.searchParams.set('code', code);
 
-  const response = await fetch(url.href, {
+  const response = await fetch.request(url.href, {
     redirect: "manual",
     headers: {
       'x-csrt-token': session.token,
@@ -51,7 +56,9 @@ export async function getRedemptionOptions(session: Session, code: string): Prom
   return [true, options];
 }
 
-export async function submitRedemption(session: Session, option: RedemptionOption) {
+export async function submitRedemption(session: Session, option: RedemptionOption): Promise<string> {
+  debug('Submitting redemption');
+
   const url = new URL('/code_redemptions', SHIFT_URL);
 
   const params = new URLSearchParams();
@@ -61,7 +68,7 @@ export async function submitRedemption(session: Session, option: RedemptionOptio
   params.set('archway_code_redemption[service]', option.service);
   params.set('archway_code_redemption[title]', option.title);
 
-  const response = await fetch(url.href, {
+  const response = await fetch.request(url.href, {
     method: 'POST',
     body: params,
     redirect: "manual",
@@ -71,16 +78,38 @@ export async function submitRedemption(session: Session, option: RedemptionOptio
       'cookie': session.cookie
     }
   });
+
   if (response.status !== 302) {
     throw new Error(response.statusText);
   }
 
-  const statusUrl = response.headers.get('location') as string;
-  return statusUrl;
+  const statusUrl = new URL(response.headers.get('location') as string);
+
+  // Invalid redirect, continue with redirect and get error message
+  if (!statusUrl.pathname.startsWith('/code_redemptions')) {
+    const errorResponse = await fetch.request(statusUrl.href, {
+      method: 'GET',
+      headers: {
+        'x-csrt-token': session.token,
+        'x-requested-with': 'XMLHttpRequest',
+        'cookie': session.cookie
+      }
+    });
+
+    const text = await errorResponse.text();
+    const $ = cheerio.load(text);
+    const notice = $('.alert.notice');
+    const status = notice.text().trim() || 'Invalid redemption option result';
+    throw new Error(status);
+  }
+
+  return statusUrl.href;
 }
 
 export async function waitForRedemption(session: Session, url: string, eocCntCookie: string | null = null): Promise<string> {
-  const response = await fetch(url, {
+  debug(`Waiting for redemption: ${url}`);
+
+  const response = await fetch.request(url, {
     redirect: 'manual',
     headers: {
       'cookie': [session.cookie, eocCntCookie].filter(Boolean).join('; ')
@@ -101,17 +130,21 @@ export async function waitForRedemption(session: Session, url: string, eocCntCoo
 
   const status = $('#check_redemption_status');
   const statusPath = status.attr('data-url');
-  const statusUrl = new URL(statusPath, SHIFT_URL).href;
+  if (!statusPath) {
+    throw new Error('Invalid redemption status');
+  }
+
+  const statusUrl = statusPath ? new URL(statusPath, SHIFT_URL).href : url;
 
   eocCntCookie = response.headers.get('set-cookie');
-
-  await new Promise((resolve) => setTimeout(resolve, 500));
 
   return await waitForRedemption(session, statusUrl, eocCntCookie);
 }
 
 export async function checkRedemptionStatus(session: Session, url: string) {
-  const response = await fetch(url, {
+  debug('Getting redemption status');
+
+  const response = await fetch.request(url, {
     headers: {
       'cookie': session.cookie
     }
@@ -128,7 +161,7 @@ export async function checkRedemptionStatus(session: Session, url: string) {
   return status;
 }
 
-export async function redeem(session: Session, option: RedemptionOption) {
+export async function redeemOption(session: Session, option: RedemptionOption) {
   const statusUrl = await submitRedemption(session, option);
   const checkUrl = await waitForRedemption(session, statusUrl);
   const status = await checkRedemptionStatus(session, checkUrl);
@@ -140,6 +173,30 @@ export async function redeem(session: Session, option: RedemptionOption) {
     status,
     success: /Your code was successfully redeemed/i.test(status)
   };
+  return result;
+}
+
+export async function redeemService(session: Session, code: string, service: string) {
+  const [success, status] = await getRedemptionOptions(session, code);
+  if (!success) {
+    return {
+      code,
+      success: false,
+      status: status as string
+    };
+  }
+
+  const options = status as RedemptionOption[];
+  const option = options.find((o) => o.service === service);
+  if (!option) {
+    return {
+      code,
+      success: false,
+      status: 'This code is not available for your account'
+    };
+  }
+
+  const result = await redeemOption(session, option);
   return result;
 }
 
@@ -156,7 +213,7 @@ export async function redeemAll(session: Session, code: string) {
   const options = status as RedemptionOption[];
   const results: RedemptionResult[] = [];
   for (const option of options) {
-    const result = await redeem(session, option);
+    const result = await redeemOption(session, option);
     results.push(result);
   }
   return results;
