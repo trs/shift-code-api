@@ -30,5 +30,6 @@ export enum ErrorCodes {
   LoginRequired = 'LoginRequired',
   NoRedemptionOptions = 'NoRedemptionOptions',
   CodeNotAvailable = 'CodeNotAvailable',
+  LaunchGame = 'LaunchGame',
   Unknown = 'Unknown'
 }

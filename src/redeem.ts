@@ -168,23 +168,39 @@ export async function checkRedemptionStatus(session: Session, url: string) {
 }
 
 export async function redeemOption(session: Session, option: RedemptionOption) {
-  const statusUrl = await submitRedemption(session, option);
-  const checkUrl = await waitForRedemption(session, statusUrl);
-  const status = await checkRedemptionStatus(session, checkUrl);
+  try {
+    const statusUrl = await submitRedemption(session, option);
+    const checkUrl = await waitForRedemption(session, statusUrl);
+    const status = await checkRedemptionStatus(session, checkUrl);
 
-  const error = (() => {
-    if (/Your code was successfully redeemed/i.test(status)) return ErrorCodes.Success;
-    else return ErrorCodes.Unknown;
-  })();
+    const error = (() => {
+      if (/Your code was successfully redeemed/i.test(status)) return ErrorCodes.Success;
+      else return ErrorCodes.Unknown;
+    })();
 
-  const result: RedemptionResult = {
-    code: option.code,
-    title: GAME_CODE[SHIFT_TITLE.indexOf(option.title)],
-    service: SERVICE_CODE[SHIFT_SERVICE.indexOf(option.service)],
-    status,
-    error
-  };
-  return result;
+    const result: RedemptionResult = {
+      code: option.code,
+      title: GAME_CODE[SHIFT_TITLE.indexOf(option.title)],
+      service: SERVICE_CODE[SHIFT_SERVICE.indexOf(option.service)],
+      status,
+      error
+    };
+    return result;
+  } catch (err) {
+    if (err.message.includes("please launch a SHiFT-enabled title first")) {
+      return {
+        code: option.code,
+        error: ErrorCodes.LaunchGame,
+        status: err.message
+      }
+    } else {
+      return {
+        code: option.code,
+        error: ErrorCodes.Unknown,
+        status: err.message
+      }
+    }
+  }
 }
 
 export async function redeem(session: Session, code: string, ...services: string[]) {
