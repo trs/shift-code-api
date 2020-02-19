@@ -1,4 +1,4 @@
-import {URL, URLSearchParams } from 'url';
+import { URL, URLSearchParams } from 'url';
 import * as cheerio from 'cheerio';
 
 import * as fetch from './fetch';
