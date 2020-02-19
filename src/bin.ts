@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 
-import {login, redeemAll} from './index';
+import {login, redeem} from './index';
 
 (async () => {
   const [,, email, password, code] = process.argv;
@@ -10,7 +10,7 @@ import {login, redeemAll} from './index';
     password
   });
 
-  const results = await redeemAll(session, code);
+  const results = await redeem(session, code);
 
   console.log(results);
   process.exit(0);

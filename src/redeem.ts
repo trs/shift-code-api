@@ -182,31 +182,7 @@ export async function redeemOption(session: Session, option: RedemptionOption) {
   return result;
 }
 
-export async function redeemService(session: Session, code: string, service: string) {
-  const [error, status] = await getRedemptionOptions(session, code);
-  if (error !== ErrorCodes.Success) {
-    return {
-      code,
-      error,
-      status: status as string
-    };
-  }
-
-  const options = status as RedemptionOption[];
-  const option = options.find((o) => o.service === service);
-  if (!option) {
-    return {
-      code,
-      error: ErrorCodes.CodeNotAvailable,
-      status: 'This code is not available for your account'
-    };
-  }
-
-  const result = await redeemOption(session, option);
-  return result;
-}
-
-export async function redeemAll(session: Session, code: string) {
+export async function redeem(session: Session, code: string, ...services: string[]) {
   const [error, status] = await getRedemptionOptions(session, code);
   if (error !== ErrorCodes.Success) {
     return [{
@@ -216,7 +192,11 @@ export async function redeemAll(session: Session, code: string) {
     }];
   }
 
-  const options = status as RedemptionOption[];
+  let options = status as RedemptionOption[];
+  if (services.length > 0) {
+    options = options.filter(({service}) => services.includes(service));
+  }
+
   const results: RedemptionResult[] = [];
   for (const option of options) {
     const result = await redeemOption(session, option);
