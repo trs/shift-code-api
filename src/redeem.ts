@@ -172,12 +172,17 @@ export async function redeemOption(session: Session, option: RedemptionOption) {
   const checkUrl = await waitForRedemption(session, statusUrl);
   const status = await checkRedemptionStatus(session, checkUrl);
 
+  const error = (() => {
+    if (/Your code was successfully redeemed/i.test(status)) return ErrorCodes.Success;
+    else return ErrorCodes.Unknown;
+  })();
+
   const result: RedemptionResult = {
     code: option.code,
     title: GAME_CODE[SHIFT_TITLE.indexOf(option.title)],
     service: SERVICE_CODE[SHIFT_SERVICE.indexOf(option.service)],
     status,
-    success: /Your code was successfully redeemed/i.test(status)
+    error
   };
   return result;
 }

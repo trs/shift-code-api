@@ -20,7 +20,7 @@ export interface RedemptionOption {
 export interface RedemptionResult {
   code: string;
   status: string;
-  success: boolean;
+  error: ErrorCodes;
   title?: string;
   service?: string;
 }
