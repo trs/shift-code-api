@@ -24,3 +24,11 @@ export interface RedemptionResult {
   title?: string;
   service?: string;
 }
+
+export enum ErrorCodes {
+  Success = 'Success',
+  LoginRequired = 'LoginRequired',
+  NoRedemptionOptions = 'NoRedemptionOptions',
+  CodeNotAvailable = 'CodeNotAvailable',
+  Unknown = 'Unknown'
+}

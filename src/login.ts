@@ -21,6 +21,7 @@ export async function getSession(): Promise<Session> {
 
   // Get authenticity token from head
   const token = $('meta[name=csrf-token]').attr('content');
+  if (!token) throw new Error('Token content not found');
 
   debug(`Session token: ${token}`);
 

@@ -3,12 +3,12 @@ import * as cheerio from 'cheerio';
 
 import * as fetch from './fetch';
 import { SHIFT_URL, GAME_CODE, SHIFT_TITLE, SERVICE_CODE, SHIFT_SERVICE } from "./const";
-import { Session, RedemptionOption, RedemptionResult } from "./types";
+import { Session, RedemptionOption, RedemptionResult, ErrorCodes } from "./types";
 
 import createDebugger from 'debug';
 const debug = createDebugger('redeem');
 
-export async function getRedemptionOptions(session: Session, code: string): Promise<[boolean, string | RedemptionOption[]]> {
+export async function getRedemptionOptions(session: Session, code: string): Promise<[ErrorCodes, string | RedemptionOption[]]> {
   debug('Fetching redemption options');
 
   const url = new URL('/entitlement_offer_codes', SHIFT_URL);
@@ -22,8 +22,14 @@ export async function getRedemptionOptions(session: Session, code: string): Prom
       'cookie': session.cookie
     }
   });
+
+  debug('Redemption options response', response.status, response.statusText);
+
   if (!response.ok) {
-    return [false, response.statusText];
+    if (response.status === 302) {
+      return [ErrorCodes.LoginRequired, 'Login required'];
+    }
+    return [ErrorCodes.Unknown, response.statusText];
   }
 
   const text = await response.text();
@@ -32,7 +38,7 @@ export async function getRedemptionOptions(session: Session, code: string): Prom
   const redeemOptions = $('.new_archway_code_redemption');
   if (redeemOptions.length === 0) {
     const error = text.trim();
-    return [false, error];
+    return [ErrorCodes.NoRedemptionOptions, error];
   }
 
   const options: RedemptionOption[] = [];
@@ -53,11 +59,11 @@ export async function getRedemptionOptions(session: Session, code: string): Prom
     });
   });
 
-  return [true, options];
+  return [ErrorCodes.Success, options];
 }
 
 export async function submitRedemption(session: Session, option: RedemptionOption): Promise<string> {
-  debug('Submitting redemption');
+  debug('Submitting redemption', option);
 
   const url = new URL('/code_redemptions', SHIFT_URL);
 
@@ -177,11 +183,11 @@ export async function redeemOption(session: Session, option: RedemptionOption) {
 }
 
 export async function redeemService(session: Session, code: string, service: string) {
-  const [success, status] = await getRedemptionOptions(session, code);
-  if (!success) {
+  const [error, status] = await getRedemptionOptions(session, code);
+  if (error !== ErrorCodes.Success) {
     return {
       code,
-      success: false,
+      error,
       status: status as string
     };
   }
@@ -191,7 +197,7 @@ export async function redeemService(session: Session, code: string, service: str
   if (!option) {
     return {
       code,
-      success: false,
+      error: ErrorCodes.CodeNotAvailable,
       status: 'This code is not available for your account'
     };
   }
@@ -201,11 +207,11 @@ export async function redeemService(session: Session, code: string, service: str
 }
 
 export async function redeemAll(session: Session, code: string) {
-  const [success, status] = await getRedemptionOptions(session, code);
-  if (!success) {
+  const [error, status] = await getRedemptionOptions(session, code);
+  if (error !== ErrorCodes.Success) {
     return [{
       code,
-      success: false,
+      error,
       status: status as string
     }];
   }
