@@ -85,6 +85,8 @@ export async function submitRedemption(session: Session, option: RedemptionOptio
     }
   });
 
+  debug('Redemption submission response', response.status, response.statusText);
+
   if (response.status !== 302) {
     throw new Error(response.statusText);
   }
@@ -93,6 +95,8 @@ export async function submitRedemption(session: Session, option: RedemptionOptio
 
   // Invalid redirect, continue with redirect and get error message
   if (!statusUrl.pathname.startsWith('/code_redemptions')) {
+    debug('Invalid redemption submission redirect', statusUrl.pathname);
+
     const errorResponse = await fetch.request(statusUrl.href, {
       method: 'GET',
       headers: {
