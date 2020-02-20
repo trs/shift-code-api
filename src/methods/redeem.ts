@@ -208,14 +208,14 @@ export async function redeemOption(session: Session, option: RedemptionOption) {
   }
 }
 
-export async function* redeem(session: Session, code: string, ...services: string[]) {
+export async function* redeem(session: Session, code: string, ...services: string[]): AsyncGenerator<RedemptionResult> {
   const [error, status] = await getRedemptionOptions(session, code);
   if (error !== ErrorCodes.Success) {
-    return [{
+    yield {
       code,
       error,
       status: status as string
-    }];
+    };
   }
 
   let options = status as RedemptionOption[];
