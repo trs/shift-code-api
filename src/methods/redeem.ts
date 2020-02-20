@@ -179,6 +179,7 @@ export async function redeemOption(session: Session, option: RedemptionOption) {
 
     const error = (() => {
       if (/Your code was successfully redeemed/i.test(status)) return ErrorCodes.Success;
+      else if (/Failed to redeem your SHiFT code/i.test(status)) return ErrorCodes.AlreadyRedeemed;
       else return ErrorCodes.Unknown;
     })();
 
@@ -207,7 +208,7 @@ export async function redeemOption(session: Session, option: RedemptionOption) {
   }
 }
 
-export async function redeem(session: Session, code: string, ...services: string[]) {
+export async function* redeem(session: Session, code: string, ...services: string[]) {
   const [error, status] = await getRedemptionOptions(session, code);
   if (error !== ErrorCodes.Success) {
     return [{
@@ -222,10 +223,8 @@ export async function redeem(session: Session, code: string, ...services: string
     options = options.filter(({service}) => services.includes(service));
   }
 
-  const results: RedemptionResult[] = [];
-  for (const option of options) {
+  for await (const option of options) {
     const result = await redeemOption(session, option);
-    results.push(result);
+    yield result;
   }
-  return results;
 }

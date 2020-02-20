@@ -32,5 +32,6 @@ export enum ErrorCodes {
   NoRedemptionOptions = 'NoRedemptionOptions',
   CodeNotAvailable = 'CodeNotAvailable',
   LaunchGame = 'LaunchGame',
+  AlreadyRedeemed = 'AlreadyRedeemed',
   Unknown = 'Unknown'
 }
