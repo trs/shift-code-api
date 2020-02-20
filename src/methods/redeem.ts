@@ -216,6 +216,7 @@ export async function* redeem(session: Session, code: string, ...services: strin
       error,
       status: status as string
     };
+    return;
   }
 
   let options = status as RedemptionOption[];
