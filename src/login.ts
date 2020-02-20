@@ -10,6 +10,7 @@ const debug = createDebugger('login');
 
 export async function getSession(): Promise<Session> {
   debug('Requesting session');
+  
   const url = new URL('/home', SHIFT_URL);
   const response = await fetch.request(url.href);
   if (!response.ok) {

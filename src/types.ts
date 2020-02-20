@@ -4,6 +4,12 @@ export interface Session {
   cookie: string;
 }
 
+export interface Account {
+  email: string;
+  name: string;
+  id: string;
+}
+
 export interface Credentials {
   email: string;
   password: string;
