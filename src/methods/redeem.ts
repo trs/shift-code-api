@@ -1,9 +1,9 @@
 import { URL, URLSearchParams } from "url";
 import * as cheerio from 'cheerio';
 
-import * as fetch from './fetch';
-import { SHIFT_URL, GAME_CODE, SHIFT_TITLE, SERVICE_CODE, SHIFT_SERVICE } from "./const";
-import { Session, RedemptionOption, RedemptionResult, ErrorCodes } from "./types";
+import * as fetch from '../fetch';
+import { SHIFT_URL, GAME_CODE, SHIFT_TITLE, SERVICE_CODE, SHIFT_SERVICE } from "../const";
+import { Session, RedemptionOption, RedemptionResult, ErrorCodes } from "../types";
 
 import createDebugger from 'debug';
 const debug = createDebugger('redeem');

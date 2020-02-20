@@ -1,9 +1,9 @@
 import { URL, URLSearchParams } from 'url';
 import * as cheerio from 'cheerio';
 
-import * as fetch from './fetch';
-import { SHIFT_URL } from './const';
-import { Session, Credentials } from './types';
+import * as fetch from '../fetch';
+import { SHIFT_URL } from '../const';
+import { Session } from '../types';
 
 import createDebugger from 'debug';
 const debug = createDebugger('login');
@@ -35,15 +35,17 @@ export async function getSession(): Promise<Session> {
   return {token, cookie};
 }
 
-export async function authenticate(session: Session, creds: Credentials): Promise<Session> {
-  debug('Authenticating');
+export async function login(email: string, password: string): Promise<Session> {
+  const session = await getSession();
+
+  debug('Authenticating', email);
 
   const url = new URL('/sessions', SHIFT_URL);
 
   const params = new URLSearchParams();
   params.set('authenticity_token', session.token);
-  params.set('user[email]', creds.email);
-  params.set('user[password]', creds.password);
+  params.set('user[email]', email);
+  params.set('user[password]', password);
 
   const response = await fetch.request(url.href, {
     headers: {
@@ -53,6 +55,9 @@ export async function authenticate(session: Session, creds: Credentials): Promis
     method: 'POST',
     body: params
   });
+
+  debug('Authentication response', response.statusText, response.statusText);
+
   if (response.status !== 302) {
     throw new Error(response.statusText);
   }
@@ -73,9 +78,4 @@ export async function authenticate(session: Session, creds: Credentials): Promis
     token: session.token,
     cookie
   };
-}
-
-export async function login(creds: Credentials): Promise<Session> {
-  const session = await getSession();
-  return await authenticate(session, creds);
 }

@@ -10,11 +10,6 @@ export interface Account {
   id: string;
 }
 
-export interface Credentials {
-  email: string;
-  password: string;
-}
-
 export interface RedemptionOption {
   token: string;
   code: string;

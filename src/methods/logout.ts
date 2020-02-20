@@ -1,8 +1,8 @@
 import { URL } from 'url';
 
-import * as fetch from './fetch';
-import { SHIFT_URL } from './const';
-import { Session } from './types';
+import * as fetch from '../fetch';
+import { SHIFT_URL } from '../const';
+import { Session } from '../types';
 
 import createDebugger from 'debug';
 const debug = createDebugger('logout');
