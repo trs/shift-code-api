@@ -198,6 +198,12 @@ export async function redeemOption(session: Session, option: RedemptionOption) {
         error: ErrorCodes.LaunchGame,
         status: err.message
       }
+    } else if (err.message.includes("Invalid redemption option result")) {
+      return {
+        code: option.code,
+        error: ErrorCodes.LoginRequired,
+        status: err.message
+      }
     } else {
       return {
         code: option.code,
