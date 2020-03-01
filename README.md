@@ -11,12 +11,20 @@ npm install shift-code-api
 ## Usage
 
 ```js
-import {login, redeem} from 'shift-code-api';
+import {login, redeem, account, logout} from 'shift-code-api';
 
 (async () => {
   const session = await login('email', 'password');
 
-  const redeem = await redeem(session, 'XXXXX-XXXXX-XXXXX-XXXXX-XXXXX');
+  const user = await account(session);
+  console.log('Redeeming code for %s', user.email);
+
+  const results = redeem(session, 'XXXXX-XXXXX-XXXXX-XXXXX-XXXXX');
+  for await (const result of results) {
+    console.log(result);
+  }
+
+  await logout(session);
 })();
 ```
 
@@ -30,15 +38,19 @@ Create a login session to use for additional methods.
 
 Logout and invalidate the session.
 
-### `redeem(session, code) => Promise<RedemptionResult[]>`
+### `redeem(session, code) => AsyncGenerator<RedemptionResult>`
 
 Redeem a SHiFT code on the account associated to the session.
 
+A code can be associated to multiple platforms, so one or many RedemptionResults will be yielded.
+
 ### `account(session) => Promise<Account>`
 
-Get account details
+Get account details, such as email and ID.
 
 ## CLI
+
+A simple CLI to redeem a given code.
 
 ```sh
 npx shift-code-api [email] [password] [code]
