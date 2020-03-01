@@ -19,7 +19,7 @@
   "keywords": [],
   "repository": {
     "type": "git",
-    "url": "git@github.com:trs/shift-code-api.git"
+    "url": "https://github.com/trs/shift-code-api.git"
   },
   "author": "Tyler Stewart",
   "license": "MIT",
