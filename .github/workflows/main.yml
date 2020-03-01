@@ -2,6 +2,7 @@ name: Release
 
 on:
   pull_request:
+    types: [merged]
     branches:
     - master
 
