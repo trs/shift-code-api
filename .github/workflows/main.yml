@@ -17,10 +17,6 @@ jobs:
         node-version: '12'
     - name: Install
       run: npm ci
-    - name: Build
-      run: |
-        npm run build
-        ls -la dist
     - name: Release
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
