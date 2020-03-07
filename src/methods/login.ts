@@ -1,81 +1,56 @@
-import { URL, URLSearchParams } from 'url';
-import * as cheerio from 'cheerio';
+import { URL } from 'url';
 
 import * as fetch from '../fetch';
-import { SHIFT_URL } from '../const';
-import { Session } from '../types';
+import { API_URL } from '../const';
+import { Session, Account } from '../types';
 
 import createDebugger from 'debug';
 const debug = createDebugger('login');
 
-export async function getSession(): Promise<Session> {
-  debug('Requesting session');
-  
-  const url = new URL('/home', SHIFT_URL);
-  const response = await fetch.request(url.href);
-  if (!response.ok) {
-    throw new Error(response.statusText);
-  }
+export async function login(username: string, password: string): Promise<{session: Session; account: Account}> {
+  const url = new URL('users/authenticate', API_URL);
 
-  const text = await response.text();
-  const $ = cheerio.load(text);
-
-  // Get authenticity token from head
-  const token = $('meta[name=csrf-token]').attr('content');
-  if (!token) throw new Error('Token content not found');
-
-  debug(`Session token: ${token}`);
-
-  // Get session ID from set-cookie header
-  const cookie = response.headers.get('set-cookie');
-  if (!cookie) throw new Error('No set-cookie header');
-
-  debug(`Session cookie: ${cookie}`);
-
-  return {token, cookie};
-}
-
-export async function login(email: string, password: string): Promise<Session> {
-  const session = await getSession();
-
-  debug('Authenticating', email);
-
-  const url = new URL('/sessions', SHIFT_URL);
-
-  const params = new URLSearchParams();
-  params.set('authenticity_token', session.token);
-  params.set('user[email]', email);
-  params.set('user[password]', password);
+  debug('Login request', url);
 
   const response = await fetch.request(url.href, {
-    headers: {
-      'cookie': session.cookie
-    },
     redirect: 'manual',
     method: 'POST',
-    body: params
+    headers: {
+      origin: 'https://borderlands.com',
+      referer: 'https://borderlands.com/en-US/vip/',
+      host: 'api.2k.com',
+      accept: 'application/json',
+      'content-type': 'application/json;charset=utf-8'
+    },
+    body: JSON.stringify({
+      username,
+      password
+    })
   });
+  debug('Login response', response.status, response.statusText);
 
-  debug('Authentication response', response.statusText, response.statusText);
-
-  if (response.status !== 302) {
+  if (response.status !== 200) {
     throw new Error(response.statusText);
   }
 
-  const location = response.headers.get('location');
-  if (!location || !location.endsWith('/account')) {
-    throw new Error('Authentication failed');
+  const session = response.headers.get('x-session-set');
+  if (!session) {
+    throw new Error('No session set');
   }
+  
+  debug('Login session set', session);
 
-  const cookie = response.headers.get('set-cookie');
-  if (!cookie) {
-    throw new Error('Authentication failed');
+  const json = await response.json();
+
+  const account: Account = {
+    username,
+    displayName: json.displayName,
+    id: json.shiftUserId,
+    games: json.playedGames
   }
-
-  debug('Authentication successful');
 
   return {
-    token: session.token,
-    cookie
+    session,
+    account
   };
 }

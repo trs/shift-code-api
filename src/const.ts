@@ -1,4 +1,5 @@
-export const SHIFT_URL = 'https://shift.gearboxsoftware.com';
+export const API_URL = 'https://api.2k.com/borderlands/';
+export const MARKETING_API = 'https://2kgames.crowdtwist.com/';
 
 export const SHIFT_SERVICE = [
   'steam',

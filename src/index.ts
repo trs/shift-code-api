@@ -1,6 +1,5 @@
 export { login } from './methods/login';
 export { logout } from './methods/logout';
-export { redeem } from './methods/redeem';
-export { account } from './methods/account';
+export { redeemShiftCode, redeemOffer, checkOffers } from './methods/shift';
 
 export * from './types';
