@@ -1,7 +1,10 @@
-
-export interface Session {
+export interface Authenticity {
   token: string;
-  cookie: string;
+  sessionID: string;
+}
+
+export interface Session extends Authenticity {
+  si: string;
 }
 
 export interface Account {

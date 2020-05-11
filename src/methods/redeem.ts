@@ -1,25 +1,26 @@
 import { URL, URLSearchParams } from "url";
 import * as cheerio from 'cheerio';
+import { CookieJar } from "tough-cookie";
 
 import * as fetch from '../fetch';
+import { createSessionCookieJar } from "../cookie";
 import { SHIFT_URL, GAME_CODE, SHIFT_TITLE, SERVICE_CODE, SHIFT_SERVICE } from "../const";
 import { Session, RedemptionOption, RedemptionResult, ErrorCodes } from "../types";
 
 import createDebugger from 'debug';
 const debug = createDebugger('redeem');
 
-export async function getRedemptionOptions(session: Session, code: string): Promise<[ErrorCodes, string | RedemptionOption[]]> {
+export async function getRedemptionOptions(token: string, jar: CookieJar, code: string): Promise<[ErrorCodes, string | RedemptionOption[]]> {
   debug('Fetching redemption options');
 
   const url = new URL('/entitlement_offer_codes', SHIFT_URL);
   url.searchParams.set('code', code);
 
-  const response = await fetch.request(url.href, {
+  const response = await fetch.request(jar, url.href, {
     redirect: "manual",
     headers: {
-      'x-csrt-token': session.token,
-      'x-requested-with': 'XMLHttpRequest',
-      'cookie': session.cookie
+      'x-csrt-token': token,
+      'x-requested-with': 'XMLHttpRequest'
     }
   });
 
@@ -59,10 +60,12 @@ export async function getRedemptionOptions(session: Session, code: string): Prom
     });
   });
 
+  debug('Redemption options', options);
+
   return [ErrorCodes.Success, options];
 }
 
-export async function submitRedemption(session: Session, option: RedemptionOption): Promise<string> {
+export async function submitRedemption(jar: CookieJar, option: RedemptionOption): Promise<string> {
   debug('Submitting redemption', option);
 
   const url = new URL('/code_redemptions', SHIFT_URL);
@@ -74,15 +77,10 @@ export async function submitRedemption(session: Session, option: RedemptionOptio
   params.set('archway_code_redemption[service]', option.service);
   params.set('archway_code_redemption[title]', option.title);
 
-  const response = await fetch.request(url.href, {
+  const response = await fetch.request(jar, url.href, {
     method: 'POST',
     body: params,
     redirect: "manual",
-    headers: {
-      'x-csrt-token': session.token,
-      'x-requested-with': 'XMLHttpRequest',
-      'cookie': session.cookie
-    }
   });
 
   debug('Redemption submission response', response.status, response.statusText);
@@ -97,12 +95,10 @@ export async function submitRedemption(session: Session, option: RedemptionOptio
   if (!statusUrl.pathname.startsWith('/code_redemptions')) {
     debug('Invalid redemption submission redirect', statusUrl.pathname);
 
-    const errorResponse = await fetch.request(statusUrl.href, {
+    const errorResponse = await fetch.request(jar, statusUrl.href, {
       method: 'GET',
       headers: {
-        'x-csrt-token': session.token,
-        'x-requested-with': 'XMLHttpRequest',
-        'cookie': session.cookie
+        'cookie': await jar.getCookieString(SHIFT_URL)
       }
     });
 
@@ -116,13 +112,13 @@ export async function submitRedemption(session: Session, option: RedemptionOptio
   return statusUrl.href;
 }
 
-export async function waitForRedemption(session: Session, url: string, eocCntCookie: string | null = null): Promise<string> {
+export async function waitForRedemption(jar: CookieJar, url: string): Promise<string> {
   debug(`Waiting for redemption: ${url}`);
 
-  const response = await fetch.request(url, {
+  const response = await fetch.request(jar, url, {
     redirect: 'manual',
     headers: {
-      'cookie': [session.cookie, eocCntCookie].filter(Boolean).join('; ')
+      'cookie': await jar.getCookieString(SHIFT_URL)
     }
   });
 
@@ -146,17 +142,15 @@ export async function waitForRedemption(session: Session, url: string, eocCntCoo
 
   const statusUrl = statusPath ? new URL(statusPath, SHIFT_URL).href : url;
 
-  eocCntCookie = response.headers.get('set-cookie');
-
-  return await waitForRedemption(session, statusUrl, eocCntCookie);
+  return await waitForRedemption(jar, statusUrl);
 }
 
-export async function checkRedemptionStatus(session: Session, url: string) {
+export async function checkRedemptionStatus(jar: CookieJar, url: string) {
   debug('Getting redemption status');
 
-  const response = await fetch.request(url, {
+  const response = await fetch.request(jar, url, {
     headers: {
-      'cookie': session.cookie
+      'cookie': await jar.getCookieString(SHIFT_URL)
     }
   });
   if (!response.ok) {
@@ -168,14 +162,17 @@ export async function checkRedemptionStatus(session: Session, url: string) {
 
   const notice = $('.notice');
   const status = notice.text().trim();
+
+  debug('Redemption status:', status);
+
   return status;
 }
 
-export async function redeemOption(session: Session, option: RedemptionOption) {
+export async function redeemOption(jar: CookieJar, option: RedemptionOption) {
   try {
-    const statusUrl = await submitRedemption(session, option);
-    const checkUrl = await waitForRedemption(session, statusUrl);
-    const status = await checkRedemptionStatus(session, checkUrl);
+    const statusUrl = await submitRedemption(jar, option);
+    const checkUrl = await waitForRedemption(jar, statusUrl);
+    const status = await checkRedemptionStatus(jar, checkUrl);
 
     const error = (() => {
       if (/Your code was successfully redeemed/i.test(status)) return ErrorCodes.Success;
@@ -190,6 +187,9 @@ export async function redeemOption(session: Session, option: RedemptionOption) {
       status,
       error
     };
+
+    debug('Redemption result', result);
+
     return result;
   } catch (err) {
     if (err.message.includes("please launch a SHiFT-enabled title first")) {
@@ -215,7 +215,9 @@ export async function redeemOption(session: Session, option: RedemptionOption) {
 }
 
 export async function* redeem(session: Session, code: string, ...services: string[]): AsyncGenerator<RedemptionResult> {
-  const [error, status] = await getRedemptionOptions(session, code);
+  const jar = createSessionCookieJar(session);
+
+  const [error, status] = await getRedemptionOptions(session.token, jar, code);
   if (error !== ErrorCodes.Success) {
     yield {
       code,
@@ -231,7 +233,7 @@ export async function* redeem(session: Session, code: string, ...services: strin
   }
 
   for await (const option of options) {
-    const result = await redeemOption(session, option);
+    const result = await redeemOption(jar, option);
     yield result;
   }
 }
