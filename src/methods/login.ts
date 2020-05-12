@@ -1,55 +1,34 @@
 import { URL, URLSearchParams } from 'url';
-import * as cheerio from 'cheerio';
 
+import { authenticity } from './authenticity';
+import { extractSetCookie } from '../cookie';
 import * as fetch from '../fetch';
 import { SHIFT_URL } from '../const';
-import { Session } from '../types';
+import { Session, Authenticity } from '../types';
 
 import createDebugger from 'debug';
 const debug = createDebugger('login');
 
-export async function getSession(): Promise<Session> {
-  debug('Requesting session');
-  
-  const url = new URL('/home', SHIFT_URL);
-  const response = await fetch.request(url.href);
-  if (!response.ok) {
-    throw new Error(response.statusText);
-  }
-
-  const text = await response.text();
-  const $ = cheerio.load(text);
-
-  // Get authenticity token from head
-  const token = $('meta[name=csrf-token]').attr('content');
-  if (!token) throw new Error('Token content not found');
-
-  debug(`Session token: ${token}`);
-
-  // Get session ID from set-cookie header
-  const cookie = response.headers.get('set-cookie');
-  if (!cookie) throw new Error('No set-cookie header');
-
-  debug(`Session cookie: ${cookie}`);
-
-  return {token, cookie};
+export interface LoginParameters {
+  email: string;
+  password: string;
 }
 
-export async function login(email: string, password: string): Promise<Session> {
-  const session = await getSession();
+export async function login({email, password}: LoginParameters, authentic?: Authenticity): Promise<Session> {
+  const {token, sessionID} = authentic ? authentic : await authenticity();
 
   debug('Authenticating', email);
 
   const url = new URL('/sessions', SHIFT_URL);
 
   const params = new URLSearchParams();
-  params.set('authenticity_token', session.token);
+  params.set('authenticity_token', token);
   params.set('user[email]', email);
   params.set('user[password]', password);
 
-  const response = await fetch.request(url.href, {
+  const response = await fetch.request(null, url.href, {
     headers: {
-      'cookie': session.cookie
+      'cookie': `_session_id=${sessionID}`
     },
     redirect: 'manual',
     method: 'POST',
@@ -67,15 +46,16 @@ export async function login(email: string, password: string): Promise<Session> {
     throw new Error('Authentication failed');
   }
 
-  const cookie = response.headers.get('set-cookie');
-  if (!cookie) {
-    throw new Error('Authentication failed');
+  const siCookie = extractSetCookie(response.headers.raw()['set-cookie'], 'si');
+  if (!siCookie) {
+    throw new Error('No si token found');
   }
 
-  debug('Authentication successful');
+  debug('Authentication successful', siCookie.value);
 
   return {
-    token: session.token,
-    cookie
+    token,
+    sessionID,
+    si: siCookie.value
   };
 }

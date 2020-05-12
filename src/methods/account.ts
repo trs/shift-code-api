@@ -6,20 +6,18 @@ import { SHIFT_URL } from '../const';
 import { Session, Account } from '../types';
 
 import createDebugger from 'debug';
+import { createSessionCookieJar } from '../cookie';
 const debug = createDebugger('account');
 
 export async function account(session: Session) {
   debug('Requesting account');
-  
+
+  const jar = createSessionCookieJar(session);
+
   const url = new URL('/account', SHIFT_URL);
-  const response = await fetch.request(url.href, {
+  const response = await fetch.request(jar, url.href, {
     redirect: 'manual',
-    method: 'GET',
-    headers: {
-      'x-csrt-token': session.token,
-      'x-requested-with': 'XMLHttpRequest',
-      'cookie': session.cookie
-    }
+    method: 'GET'
   });
 
   debug('Account response', response.status, response.statusText);
@@ -40,7 +38,7 @@ export async function account(session: Session) {
     name,
     id
   };
-  
+
   debug('Account', account);
   return account;
 }
